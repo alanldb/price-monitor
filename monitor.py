@@ -11,19 +11,22 @@ import urllib.parse
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
-# ─── Configurações via variáveis de ambiente ────────────────────────────────
-API_ID          = int(os.environ["TELEGRAM_API_ID"])
-API_HASH        = os.environ["TELEGRAM_API_HASH"]
-SESSION_STRING  = os.environ["TELEGRAM_SESSION_STRING"]
-GROUPS_RAW      = os.environ["TELEGRAM_GROUPS"]          # separados por vírgula
-KEYWORDS_RAW    = os.environ.get("KEYWORDS", "tcl,c7k,65c7k")
-WA_PHONE        = os.environ["CALLMEBOT_PHONE"]          # ex: 5521999999999
-WA_APIKEY       = os.environ["CALLMEBOT_APIKEY"]
-GIST_ID         = os.environ["GIST_ID"]
-GH_PAT          = os.environ["GH_PAT"]                   # Personal Access Token com escopo gist
+# ─── Configurações sensíveis via secrets do GitHub ──────────────────────────
+API_ID         = int(os.environ["TELEGRAM_API_ID"])
+API_HASH       = os.environ["TELEGRAM_API_HASH"]
+SESSION_STRING = os.environ["TELEGRAM_SESSION_STRING"]
+WA_PHONE       = os.environ["CALLMEBOT_PHONE"]           # ex: 5521999999999
+WA_APIKEY      = os.environ["CALLMEBOT_APIKEY"]
+GIST_ID        = os.environ["GIST_ID"]
+GH_PAT         = os.environ["GH_PAT"]                    # Personal Access Token com escopo gist
 
-GROUPS   = [g.strip() for g in GROUPS_RAW.split(",") if g.strip()]
-KEYWORDS = [k.strip().lower() for k in KEYWORDS_RAW.split(",") if k.strip()]
+# ─── Configurações editáveis via config.json no repositório ─────────────────
+_config_path = os.path.join(os.path.dirname(__file__), "config.json")
+with open(_config_path, encoding="utf-8") as _f:
+    _config = json.load(_f)
+
+GROUPS   = [g.strip() for g in _config["groups"] if g.strip()]
+KEYWORDS = [k.strip().lower() for k in _config["keywords"] if k.strip()]
 GIST_FILENAME = "tg_monitor_state.json"
 
 
