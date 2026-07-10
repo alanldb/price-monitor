@@ -2,6 +2,9 @@
 Telegram Price Monitor - Tempo Real
 Conecta ao Telegram e escuta mensagens instantaneamente via eventos.
 Sem polling — notificação assim que a mensagem chega no grupo.
+
+Envio de alertas via WhatsApp usando o serviço local whatsapp-sender
+(Baileys, self-hosted, sem custo de terceiros).
 """
 
 import asyncio
@@ -9,7 +12,6 @@ import json
 import logging
 import os
 import urllib.request
-import urllib.parse
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 
@@ -25,8 +27,7 @@ log = logging.getLogger(__name__)
 API_ID         = int(os.environ["TELEGRAM_API_ID"])
 API_HASH       = os.environ["TELEGRAM_API_HASH"]
 SESSION_STRING = os.environ["TELEGRAM_SESSION_STRING"]
-WA_PHONE       = os.environ["CALLMEBOT_PHONE"]
-WA_APIKEY      = os.environ["CALLMEBOT_APIKEY"]
+WHATSAPP_SENDER_URL = os.environ.get("WHATSAPP_SENDER_URL", "http://127.0.0.1:3300/send")
 
 # ─── Configurações editáveis via config.json ────────────────────────────────
 _config_path = os.path.join(os.path.dirname(__file__), "config.json")
@@ -40,20 +41,25 @@ log.info(f"Grupos: {GROUPS}")
 log.info(f"Keywords: {KEYWORDS}")
 
 
-# ─── WhatsApp via CallMeBot ──────────────────────────────────────────────────
+# ─── WhatsApp via whatsapp-sender local (Baileys) ───────────────────────────
 
 def send_whatsapp(text: str) -> None:
-    encoded = urllib.parse.quote(text)
-    url = (
-        f"https://api.callmebot.com/whatsapp.php"
-        f"?phone={WA_PHONE}&text={encoded}&apikey={WA_APIKEY}"
-    )
     try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            status = resp.read().decode()
-            log.info(f"WhatsApp enviado. Resposta: {status[:80]}")
+        payload = json.dumps({"message": text}).encode("utf-8")
+        req = urllib.request.Request(
+            WHATSAPP_SENDER_URL,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode())
+            if result.get("ok"):
+                log.info("WhatsApp enviado via whatsapp-sender.")
+            else:
+                log.error(f"whatsapp-sender retornou erro: {result.get('error')}")
     except Exception as e:
-        log.error(f"Erro ao enviar WhatsApp: {e}")
+        log.error(f"Erro ao enviar WhatsApp (whatsapp-sender indisponível?): {e}")
 
 
 def format_alert(group_name: str, msg_text: str) -> str:

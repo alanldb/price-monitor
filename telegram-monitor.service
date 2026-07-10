@@ -1,7 +1,8 @@
 [Unit]
 Description=Telegram Price Monitor
-After=network-online.target
+After=network-online.target whatsapp-sender.service
 Wants=network-online.target
+Requires=whatsapp-sender.service
 
 [Service]
 Type=simple

@@ -1,0 +1,14 @@
+{
+  "name": "whatsapp-sender",
+  "version": "1.0.0",
+  "description": "Serviço local de envio de mensagens WhatsApp via Baileys (self-hosted, gratuito)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.9",
+    "express": "^4.21.0",
+    "pino": "^9.4.0"
+  }
+}
