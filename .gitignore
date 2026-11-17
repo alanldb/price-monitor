@@ -4,3 +4,4 @@ venv/
 whatsapp-sender/.env
 whatsapp-sender/auth_info*/
 node_modules/
+.telegram_down_alerted

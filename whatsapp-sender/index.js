@@ -15,6 +15,10 @@ const TARGET_NUMBER = process.env.WHATSAPP_TARGET_NUMBER; // ex: 5521888888888 �
 
 let sock = null;
 let selfJid = null;
+// Estado real da conexão, exposto em /status para o monitor.py detectar quedas
+let connected = false;      // true só enquanto o socket está aberto
+let loggedOut = false;      // true quando o WhatsApp encerrou a sessão (precisa parear de novo)
+let lastDisconnect = null;  // { statusCode, message, at } da última queda
 let pairingCodeRequested = false; // evita pedir um código novo a cada reconexão automática
 
 async function startSock() {
@@ -36,13 +40,17 @@ async function startSock() {
 
     if (connection === 'open') {
       selfJid = jidNormalizedUser(sock.user.id);
+      connected = true;
+      loggedOut = false;
       console.log('[whatsapp] ✅ Conectado como', selfJid);
     }
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const errorMsg = lastDisconnect?.error?.message || 'sem detalhes';
-      const loggedOut = statusCode === DisconnectReason.loggedOut;
+      connected = false;
+      loggedOut = statusCode === DisconnectReason.loggedOut;
+      lastDisconnect = { statusCode: statusCode ?? null, message: errorMsg, at: new Date().toISOString() };
       console.log(`[whatsapp] Conexão fechada. statusCode=${statusCode} msg="${errorMsg}"`, loggedOut ? '(logout)' : '(reconectando...)');
       if (!loggedOut) {
         setTimeout(startSock, 3000);
@@ -84,7 +92,7 @@ const app = express();
 app.use(express.json());
 
 app.get('/status', (req, res) => {
-  res.json({ ok: true, connected: !!selfJid, jid: selfJid });
+  res.json({ ok: true, connected, loggedOut, jid: selfJid, lastDisconnect });
 });
 
 app.post('/send', async (req, res) => {
@@ -92,8 +100,11 @@ app.post('/send', async (req, res) => {
   if (!message) {
     return res.status(400).json({ ok: false, error: 'Campo "message" é obrigatório' });
   }
-  if (!sock || !selfJid) {
-    return res.status(503).json({ ok: false, error: 'WhatsApp ainda não conectado' });
+  if (!sock || !selfJid || !connected) {
+    return res.status(503).json({
+      ok: false,
+      error: loggedOut ? 'Sessão do WhatsApp encerrada (logout) — é preciso parear de novo' : 'WhatsApp não conectado',
+    });
   }
   const targetJid = TARGET_NUMBER ? `${TARGET_NUMBER}@s.whatsapp.net` : selfJid;
   try {
